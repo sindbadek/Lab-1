@@ -1,30 +1,50 @@
-variable "server-name" {
-type = string 
-description = "Name of server to proviusion"
+# main.tf - kalkulator Terraform z obsługą dzielenia przez 0
+
+variable "liczba1" {
+  description = "Pierwsza liczba"
+  type        = number
+#  default     = 10
 }
 
-variable "list-of-names" {
-  type = list (string)
+variable "liczba2" {
+  description = "Druga liczba"
+  type        = number
+#  default     = 2
 }
 
-locals {
-  minNumberServer =1
-  maxNumberServer =10
-}
+variable "operacja" {
+  description = "Operacja: '+', '-', '*', '/'"
+  type        = string
+ # default     = "*"
 
-
-output "out" {
-  value = "${var.server-name} x ${var.number-of-servers}"
-}
-
-variable "number-of-servers" {
-    type = number
-    description = "requier number of servers"
-    default = 2
   validation {
-    condition = var.number-of-servers>=local.minNumberServer && var.number-of-servers<local.maxNumberServer
-        error_message = "Not supported, it should be from the range [${local.minNumberServer},${local.maxNumberServer}]"
+    condition     = contains(["+", "-", "*", "/"], var.operacja)
+    error_message = "Operacja musi być jedną z: '+', '-', '*', '/'."
   }
 }
 
+locals {
+  # Wszystkie operacje w oddzielnych locals (bezpieczne typy number)
+  dodawanie         = var.liczba1 + var.liczba2
+  odejmowanie       = var.liczba1 - var.liczba2
+  mnozenie          = var.liczba1 * var.liczba2
+  dzielenie_bezpieczne = var.liczba2 != 0 ? var.liczba1 / var.liczba2 : 999999
+  
+  # JEDNA LINIA - główny wynik
+  wynik = var.operacja == "+" ? local.dodawanie : var.operacja == "-" ? local.odejmowanie : var.operacja == "*" ? local.mnozenie : local.dzielenie_bezpieczne
+  
+  # Status jako string (typ string)
+  status = var.operacja == "/" && var.liczba2 == 0 ? "DZIELENIE PRZEZ 0!" : "OK"
+}
 
+output "wynik" {
+  value = local.wynik
+}
+
+output "status_operacji" {
+  value = local.status
+}
+
+output "szczegoly" {
+  value = "L1=${var.liczba1} L2=${var.liczba2} OP=${var.operacja} W=${local.wynik}"
+}
