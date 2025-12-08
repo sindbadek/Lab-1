@@ -64,7 +64,6 @@ output "bucket_arn" {
 output "bucket_http_url" {
   description = "Pełny URL HTTP do bucketu"
   value       = "http://${aws_s3_bucket.my_bucket.bucket}.s3.${data.aws_region.current.name}.amazonaws.com"
-  #http://awsninja7-20251208201944409100000001.s3-website-us-east-1.amazonaws.com
 }
 
 resource "aws_s3_object" "object" {
