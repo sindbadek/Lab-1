@@ -1,77 +1,34 @@
-terraform {
-  required_providers {
-    aws = {
-      source = "hashicorp/aws"
-      version = "6.25.0"
-    }
-  }
-}
- 
 provider "aws" {
-  # Configuration options
-}
-data "aws_region" "current" {}
-
-# Inupt - Bucket prefix jako zmienna + jako domyślny jest ustawiony Twój
-variable "bucket_prefix" {
-  description = "Prefiks dla nazwy bucketu"
-  type        = string
-  default     = "awsninja7-"
+  region = var.region
 }
 
-# Inupt - Tagi, gdzie domyślne jest w variable "puropse": "learning" (moze być nadpisany)
-# Zawsze dodany tag do bucketu (lub wszędzie) "owner": "jw"
-variable "purpose" {
-  description = "Cel użycia"
-  type        = string
-  default     = "learning"  # Domyślne
+resource "aws_vpc" "this" {
+  cidr_block           = var.cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(
+    var.tags,
+    {
+      Name = coalesce(lookup(var.tags, "Name", null), "vpc-main")
+    }
+  )
 }
 
-locals {
-  # Tag owner zawsze obecny - nie do nadpisania
-  mandatory_tags = {
-    owner = "so"
+resource "aws_subnet" "this" {
+  for_each = {
+    for cidr_block in var.subnets :
+    cidr_block => cidr_block
   }
-  
-  # Tagi nadpisywalne (purpose itp.)
-  optional_tags =  {
-    purpose = var.purpose
-  }
-}
 
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = each.value
+  map_public_ip_on_launch = var.public_ip_on_launch
 
-
-
- resource "aws_s3_bucket" "my_bucket" {
-    bucket_prefix = var.bucket_prefix
-#      tags = {
-#    owner   = "so"
-#    purpose = var.purpose  
-#  }
-tags = merge(local.mandatory_tags, local.optional_tags)
- }
-
- output "bucket-name" {
-   value = aws_s3_bucket.my_bucket.bucket
- }
-
-# Outputs: bucket ARN oraz pełny URL z HTTP
-output "bucket_arn" {
-  description = "ARN utworzonego bucketu"
-  value       = aws_s3_bucket.my_bucket.arn
-}
-
-output "bucket_http_url" {
-  description = "Pełny URL HTTP do bucketu"
-  value       = "http://${aws_s3_bucket.my_bucket.bucket}.s3.${data.aws_region.current.name}.amazonaws.com"
-}
-
-resource "aws_s3_object" "object" {
-for_each = toset(["plik","plik2"])
-
-  bucket = aws_s3_bucket.my_bucket.bucket
-  key    = "${each.key}"
-  source = ".terraform/test/${each.key}" 
-#content = ""
-
+  tags = merge(
+    var.tags,
+    {
+      Name = "subnet-${replace(each.value, "/", "-")}"
+    }
+  )
 }
